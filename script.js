@@ -1,29 +1,62 @@
-document.addEventListener('DOMContentLoaded', function() {
-    renderTasks();
-});
+async function addTask() {
+    const taskInput = document.getElementById('todo-task').value.trim();
+    const descriptionInput = document.getElementById('todo-description').value.trim();
 
-function addTask() {
-    const taskInput = document.getElementById('todo-task');
-    const descriptionInput = document.getElementById('todo-description');
-    const task = taskInput.value.trim();
-    const description = descriptionInput.value.trim();
-
-    if (task === '') {
+    if (!taskInput) {
         alert('Task name cannot be empty');
         return;
     }
 
-    const todoList = JSON.parse(localStorage.getItem('todoList')) || [];
-    todoList.push({ task: task, description: description, done: false });
-    localStorage.setItem('todoList', JSON.stringify(todoList));
+    const response = await fetch('https://crudcrud.com/api/4538becaf8cb45338b7ccfb2c1078e4e/todolist', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ task: taskInput, description: descriptionInput, done: false }),
+    });
+
+    if (!response.ok) {
+        alert('Failed to add task.');
+        return;
+    }
 
     renderTasks();
-    taskInput.value = '';
-    descriptionInput.value = '';
+    document.getElementById('todo-task').value = '';
+    document.getElementById('todo-description').value = '';
 }
 
-function renderTasks() {
-    const todoList = JSON.parse(localStorage.getItem('todoList')) || [];
+async function deleteTask(id) {
+    const response = await fetch(`https://crudcrud.com/api/4538becaf8cb45338b7ccfb2c1078e4e/todolist/${id}`, {
+        method: 'DELETE',
+    });
+
+    if (!response.ok) {
+        alert('Failed to delete task.');
+    }
+
+    renderTasks();
+}
+
+async function updateTask(id, done) {
+    const response = await fetch(`https://crudcrud.com/api/4538becaf8cb45338b7ccfb2c1078e4e/todolist/${id}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ done }),
+    });
+
+    if (!response.ok) {
+        alert('Failed to update task status.');
+    }
+
+    renderTasks();
+}
+
+async function renderTasks() {
+    const response = await fetch('https://crudcrud.com/api/4538becaf8cb45338b7ccfb2c1078e4e/todolist');
+    const todoList = await response.json();
+
     const todoContainer = document.getElementById('todo-list');
     const doneContainer = document.getElementById('done-list');
     todoContainer.innerHTML = '';
@@ -36,9 +69,7 @@ function renderTasks() {
         checkbox.type = 'checkbox';
         checkbox.checked = item.done;
         checkbox.addEventListener('change', function() {
-            todoList[index].done = this.checked;
-            localStorage.setItem('todoList', JSON.stringify(todoList));
-            renderTasks();
+            updateTask(item._id, this.checked);
         });
         const label = document.createElement('label');
         label.textContent = item.task + ' - ' + item.description;
@@ -54,9 +85,7 @@ function renderTasks() {
         const deleteButton = document.createElement('button');
         deleteButton.textContent = 'Delete';
         deleteButton.addEventListener('click', function() {
-            todoList.splice(index, 1);
-            localStorage.setItem('todoList', JSON.stringify(todoList));
-            renderTasks();
+            deleteTask(item._id);
         });
         taskDiv.appendChild(deleteButton);
     });
